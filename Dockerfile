@@ -2,7 +2,7 @@ FROM ros:foxy
 
 
 # ROS dependencies
-RUN apt-get update && \
+RUN apt update && \
     apt dist-upgrade -y && \
     apt-get install -y --no-install-recommends \
         python-is-python3 \
@@ -22,15 +22,11 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 
-RUN apt-get install -y --no-install-recommends \
-    gmodule-2.0 \
+RUN apt update && \
+    apt-get install -y --no-install-recommends \
     libgtk-3-dev \
-    libglib2.0-dev \
     pulseaudio \
-    libasound2-dev \
-    libpulse-dev \
-    ninja-build \
-    stow
+    ninja-build
 
 RUN apt-get install -y --no-install-recommends \
     libjpeg-turbo8 \
@@ -48,9 +44,7 @@ ENV LD_LIBRARY_PATH /usr/local/lib/:$LD_LIBRARY_PATH
 
 RUN git clone https://github.com/GT-RAIL/async_web_server_cpp.git /home/webrtc_ws/src/async_web_server_cpp/
 
-RUN /ros_entrypoint.sh catkin_make_isolated --install --install-space "/usr/local/webrtc/" \
-    && sed -i '$isource "/usr/local/webrtc/setup.bash"' /ros_entrypoint.sh \
-    && rm -rf /home/webrtc_ws/
+RUN /ros_entrypoint.sh colcon build --symlink-install
 
 ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD [ "bash" ]

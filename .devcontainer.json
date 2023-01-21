@@ -5,6 +5,6 @@
     "extensions": [
         "ms-iot.vscode-ros"
     ],
-    "workspaceFolder": "/webrtc",
+    "workspaceFolder": "/ws",
     "shutdownAction": "stopCompose"
 }
