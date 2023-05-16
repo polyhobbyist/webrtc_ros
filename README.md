@@ -9,6 +9,15 @@ For full documentation, see [the ROS wiki](http://wiki.ros.org/webrtc_ros).
 
 This project is released as part of the [Robot Web Tools](http://robotwebtools.org/) effort.
 
+### Building 
+#### Prerequisites
+
+```bash
+sudo apt-get install libgtk-3-dev
+git clone -b ros2-develop https://github.com/fkie/async_web_server_cpp
+```
+
+
 ### License
 webrtc_ros is released with a BSD license. For full terms and conditions, see the [LICENSE](LICENSE) file.
 

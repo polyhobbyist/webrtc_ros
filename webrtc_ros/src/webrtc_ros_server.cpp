@@ -2,15 +2,14 @@
 #include <webrtc_ros/webrtc_ros_server.h>
 #include "webrtc/rtc_base/ssl_adapter.h"
 
-#include "webrtc/rtc_base/bind.h"
-
 namespace webrtc_ros
 {
 
 MessageHandler* WebrtcRosServer_handle_new_signaling_channel(void* _this, SignalingChannel *channel)
 {
-    return ((WebrtcRosServer*) _this)->signaling_thread_->Invoke<MessageHandler*>(RTC_FROM_HERE, rtc::Bind(&WebrtcRosServer::handle_new_signaling_channel,
-            (WebrtcRosServer*)_this, channel));
+    MessageHandler* result;
+    ((WebrtcRosServer*) _this)->signaling_thread_->BlockingCall([&] { result = ((WebrtcRosServer*) _this)->handle_new_signaling_channel(channel);});
+    return result;
 }
 
 WebrtcRosServer::WebrtcRosServer(rclcpp::Node::SharedPtr nh)

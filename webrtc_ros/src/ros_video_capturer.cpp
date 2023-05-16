@@ -1,5 +1,4 @@
 #include "webrtc_ros/ros_video_capturer.h"
-#include "webrtc/rtc_base/bind.h"
 
 #include <rclcpp/rclcpp.hpp>
 #include <cv_bridge/cv_bridge.h>
