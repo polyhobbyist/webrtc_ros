@@ -3,7 +3,6 @@ project(webrtc_ros)
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(async_web_server_cpp REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(image_transport REQUIRED)
 find_package(std_msgs REQUIRED)
@@ -30,7 +29,6 @@ add_definitions(${webrtc_DEFINITIONS})
 
 add_executable(${PROJECT_NAME}_server_node
   src/webrtc_ros_server_node.cpp
-  src/webrtc_web_server.cpp
   src/configure_message.cpp
   src/ice_candidate_message.cpp
   src/image_transport_factory.cpp
@@ -51,7 +49,6 @@ target_include_directories(${PROJECT_NAME}_server_node
 
 ament_target_dependencies(
   ${PROJECT_NAME}_server_node
-    async_web_server_cpp
     cv_bridge
     image_transport
     rclcpp
@@ -75,15 +72,6 @@ set_target_properties(${PROJECT_NAME}_server_node PROPERTIES COMPILE_OPTIONS "-s
 install(TARGETS
   ${PROJECT_NAME}_server_node
   DESTINATION lib/${PROJECT_NAME})
-
-# Install web files
-install(DIRECTORY web
-  DESTINATION share/${PROJECT_NAME}
-  PATTERN "Gruntfile.js" EXCLUDE
-  PATTERN "node_modules" EXCLUDE
-  PATTERN "package.json" EXCLUDE
-  PATTERN ".gitignore" EXCLUDE
-)
 
 # Install launch files
 install(DIRECTORY

@@ -21,13 +21,34 @@
 
 #include <webrtc/media/engine/multiplex_codec_factory.h>
 #include <webrtc_ros/configure_message.h>
-#include <webrtc_ros/webrtc_web_server.h>
 #include <webrtc_ros/image_transport_factory.h>
 #include <webrtc/rtc_base/thread.h>
 
 
 namespace webrtc_ros
 {
+
+class SignalingChannel {
+public:
+  virtual ~SignalingChannel();
+  virtual void sendPingMessage() = 0;
+  virtual void sendTextMessage(const std::string& message) = 0;
+};
+
+class MessageHandler {
+public:
+  enum Type {
+    TEXT, PONG, CLOSE
+  };
+
+  MessageHandler();
+  virtual ~MessageHandler();
+
+  virtual void handle_message(Type type, const std::string& raw) = 0;
+};
+
+typedef MessageHandler* (*SignalingChannelCallback)(void*, SignalingChannel*);
+
 
 class WebrtcClient;
 typedef std::shared_ptr<WebrtcClient> WebrtcClientPtr;

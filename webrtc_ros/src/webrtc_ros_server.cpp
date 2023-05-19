@@ -23,7 +23,7 @@ WebrtcRosServer::WebrtcRosServer(rclcpp::Node::SharedPtr nh)
 
   signaling_thread_ = rtc::Thread::CreateWithSocketServer();
   signaling_thread_->Start();
-  server_.reset(WebrtcWebServer::create(nh_, port, &WebrtcRosServer_handle_new_signaling_channel, this));
+  //TODO polyhobbyist server_.reset(WebrtcWebServer::create(nh_, port, &WebrtcRosServer_handle_new_signaling_channel, this));
 }
 
 void WebrtcRosServer::cleanupWebrtcClient(WebrtcClient *client) {
@@ -79,12 +79,12 @@ WebrtcRosServer::~WebrtcRosServer()
 
 void WebrtcRosServer::run()
 {
-  server_->run();
+  //server_->run();
 }
 
 void WebrtcRosServer::stop()
 {
-  server_->stop();
+  //server_->stop();
 }
 
 }

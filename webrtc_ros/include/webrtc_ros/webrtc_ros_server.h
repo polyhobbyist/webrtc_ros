@@ -4,7 +4,6 @@
 #include <rclcpp/rclcpp.hpp>
 #include <boost/shared_ptr.hpp>
 #include <webrtc_ros/webrtc_client.h>
-#include <webrtc_ros/webrtc_web_server.h>
 #include <condition_variable>
 
 namespace webrtc_ros
@@ -34,7 +33,7 @@ private:
   std::string image_transport_;
   ImageTransportFactory itf_;
 
-  boost::shared_ptr<webrtc_ros::WebrtcWebServer> server_;
+  //TODO Polyhobbyist boost::shared_ptr<webrtc_ros::WebrtcWebServer> server_;
 };
 
 }

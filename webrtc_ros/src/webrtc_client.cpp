@@ -169,6 +169,9 @@ bool WebrtcClient::initPeerConnection()
   }
 }
 
+MessageHandler::MessageHandler() {}
+MessageHandler::~MessageHandler() {}
+
 class MessageHandlerImpl : public MessageHandler {
 public:
   MessageHandlerImpl(WebrtcClientWeakPtr weak_this) : weak_this_(weak_this){}
