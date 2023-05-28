@@ -27,14 +27,6 @@
 
 namespace webrtc_ros
 {
-
-class SignalingChannel {
-public:
-  virtual ~SignalingChannel();
-  virtual void sendPingMessage() = 0;
-  virtual void sendTextMessage(const std::string& message) = 0;
-};
-
 class MessageHandler {
 public:
   enum Type {
@@ -46,9 +38,6 @@ public:
 
   virtual void handle_message(Type type, const std::string& raw) = 0;
 };
-
-typedef MessageHandler* (*SignalingChannelCallback)(void*, SignalingChannel*);
-
 
 class WebrtcClient;
 typedef std::shared_ptr<WebrtcClient> WebrtcClientPtr;
@@ -81,7 +70,7 @@ class MessageHandlerImpl;
 class WebrtcClient
 {
 public:
-  WebrtcClient(rclcpp::Node::SharedPtr nh, const ImageTransportFactory& itf, const std::string& transport, SignalingChannel *signaling_channel);
+  WebrtcClient(rclcpp::Node::SharedPtr nh, const ImageTransportFactory& itf, const std::string& transport);
   ~WebrtcClient();
   MessageHandler* createMessageHandler();
 
@@ -109,9 +98,9 @@ private:
   std::shared_ptr<image_transport::ImageTransport> it_;
   ImageTransportFactory itf_;
   std::string transport_;
-  std::unique_ptr<SignalingChannel> signaling_channel_;
 
-  rtc::Thread *signaling_thread_;
+  std::shared_ptr<rclcpp::Publisher<std_msgs::msg::string>> rtc_signal_pub_;
+
   std::unique_ptr<rtc::Thread> worker_thread_;
 
   rtc::scoped_refptr<webrtc::PeerConnectionFactoryInterface> peer_connection_factory_;

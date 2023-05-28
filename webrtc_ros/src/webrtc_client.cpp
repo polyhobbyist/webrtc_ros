@@ -68,7 +68,7 @@ void WebrtcClientObserverProxy::OnSignalingChange(webrtc::PeerConnectionInterfac
 
 
 WebrtcClient::WebrtcClient(rclcpp::Node::SharedPtr nh, const ImageTransportFactory& itf, const std::string& transport, SignalingChannel* signaling_channel)
-  : nh_(nh), itf_(itf), transport_(transport), signaling_channel_(signaling_channel),
+  : nh_(nh), itf_(itf), transport_(transport),
     signaling_thread_(rtc::Thread::Current()), worker_thread_(rtc::Thread::CreateWithSocketServer())
 {
   worker_thread_->Start();
@@ -93,6 +93,8 @@ WebrtcClient::WebrtcClient(rclcpp::Node::SharedPtr nh, const ImageTransportFacto
     return;
   }
   ping_timer_ = nh_->create_wall_timer(10.0s, std::bind(&WebrtcClient::ping_timer_callback, this));
+
+  rtc_signal_pub_ = nh_->create_publisher<std_msgs::msg::string>("rtc_signalling", 1);
 }
 WebrtcClient::~WebrtcClient()
 {
@@ -193,19 +195,9 @@ MessageHandler* WebrtcClient::createMessageHandler()
 
 void WebrtcClient::ping_timer_callback()
 {
-  try
-  {
-    signaling_channel_->sendPingMessage();
-  }
-  catch (...)
-  {
-    //signaling channel probably broken
-    if (valid())
-    {
-      RCLCPP_WARN(nh_->get_logger(), "Connection broken");
-      invalidate();
-    }
-  }
+    auto s = std::make_shared<std_msgs::msg::String>();
+    s->data = "ping";
+    rtc_signal_pub_->publish(s);
 }
 
 
@@ -473,7 +465,10 @@ void WebrtcClient::OnSessionDescriptionSuccess(webrtc::SessionDescriptionInterfa
   if (message.fromSessionDescription(*description))
   {
     RCLCPP_DEBUG_STREAM(nh_->get_logger(), "Created local description: " << message.sdp);
-    signaling_channel_->sendTextMessage(message.toJson());
+
+    auto s = std::make_shared<std_msgs::msg::String>();
+    s.get()->data = message.toJson();
+    rtc_signal_pub_->publish(s);
   }
   else
   {
@@ -491,7 +486,9 @@ void WebrtcClient::OnIceCandidate(const webrtc::IceCandidateInterface* candidate
   if (message.fromIceCandidate(*candidate))
   {
     RCLCPP_DEBUG_STREAM(nh_->get_logger(), "Got local ICE candidate: " << message.toJson());
-    signaling_channel_->sendTextMessage(message.toJson());
+    auto s = std::make_shared<std_msgs::msg::String>();
+    s.get()->data = message.toJson();
+    rtc_signal_pub_->publish(s);
   }
   else
   {

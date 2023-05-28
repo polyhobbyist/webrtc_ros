@@ -9,8 +9,6 @@
 namespace webrtc_ros
 {
 
-MessageHandler* WebrtcRosServer_handle_new_signaling_channel(void* _this, SignalingChannel *channel);
-
 class WebrtcRosServer
 {
 public:
@@ -19,7 +17,6 @@ public:
   void run();
   void stop();
 
-  MessageHandler* handle_new_signaling_channel(SignalingChannel *channel);
   void cleanupWebrtcClient(WebrtcClient *client);
 
   std::unique_ptr<rtc::Thread>signaling_thread_;
@@ -32,8 +29,6 @@ private:
   rclcpp::Node::SharedPtr nh_;
   std::string image_transport_;
   ImageTransportFactory itf_;
-
-  //TODO Polyhobbyist boost::shared_ptr<webrtc_ros::WebrtcWebServer> server_;
 };
 
 }
