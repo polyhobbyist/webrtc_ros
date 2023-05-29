@@ -23,22 +23,11 @@
 #include <webrtc_ros/configure_message.h>
 #include <webrtc_ros/image_transport_factory.h>
 #include <webrtc/rtc_base/thread.h>
+#include <webrtc_ros_msgs/msg/web_rtc_message.hpp>
 
 
 namespace webrtc_ros
 {
-class MessageHandler {
-public:
-  enum Type {
-    TEXT, PONG, CLOSE
-  };
-
-  MessageHandler();
-  virtual ~MessageHandler();
-
-  virtual void handle_message(Type type, const std::string& raw) = 0;
-};
-
 class WebrtcClient;
 typedef std::shared_ptr<WebrtcClient> WebrtcClientPtr;
 typedef std::weak_ptr<WebrtcClient> WebrtcClientWeakPtr;
@@ -66,14 +55,12 @@ private:
 
 };
 
-class MessageHandlerImpl;
 class WebrtcClient
 {
 public:
-  WebrtcClient(rclcpp::Node::SharedPtr nh, const ImageTransportFactory& itf, const std::string& transport);
+  WebrtcClient(rclcpp::Node::SharedPtr nh, const ImageTransportFactory& itf, const std::string& transport, const std::string& client_id));
   ~WebrtcClient();
-  MessageHandler* createMessageHandler();
-
+  
   void init(std::shared_ptr<WebrtcClient>& keep_alive_ptr);
   void invalidate();
   bool valid();
@@ -98,8 +85,10 @@ private:
   std::shared_ptr<image_transport::ImageTransport> it_;
   ImageTransportFactory itf_;
   std::string transport_;
+  std::string client_id_;
 
   std::shared_ptr<rclcpp::Publisher<std_msgs::msg::string>> rtc_signal_pub_;
+  std::shared_ptr<rclcpp::Subscription<webrtc_ros_msgs::msg::WebRTCMessage>> rtc_message_sub_;
 
   std::unique_ptr<rtc::Thread> worker_thread_;
 

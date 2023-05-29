@@ -67,9 +67,10 @@ void WebrtcClientObserverProxy::OnSignalingChange(webrtc::PeerConnectionInterfac
 }
 
 
-WebrtcClient::WebrtcClient(rclcpp::Node::SharedPtr nh, const ImageTransportFactory& itf, const std::string& transport, SignalingChannel* signaling_channel)
+WebrtcClient::WebrtcClient(rclcpp::Node::SharedPtr nh, const ImageTransportFactory& itf, const std::string& transport, const std::string& client_id)
   : nh_(nh), itf_(itf), transport_(transport),
-    signaling_thread_(rtc::Thread::Current()), worker_thread_(rtc::Thread::CreateWithSocketServer())
+    signaling_thread_(rtc::Thread::Current()), worker_thread_(rtc::Thread::CreateWithSocketServer()),
+    client_id_(client_id)
 {
   worker_thread_->Start();
 
@@ -92,9 +93,15 @@ WebrtcClient::WebrtcClient(rclcpp::Node::SharedPtr nh, const ImageTransportFacto
     invalidate();
     return;
   }
+
   ping_timer_ = nh_->create_wall_timer(10.0s, std::bind(&WebrtcClient::ping_timer_callback, this));
 
-  rtc_signal_pub_ = nh_->create_publisher<std_msgs::msg::string>("rtc_signalling", 1);
+  std::string signalingTopic = "webrtc_client_signaling/" + client_id_;
+  rtc_signal_pub_ = nh_->create_publisher<std_msgs::msg::string>(signalingTopic, 1);
+
+  std::string messageTopic = "webrtc_client_message/" + client_id_;
+  rtc_message_sub_ = nh_->create_subscription<webrtc_ros_msgs::msg::WebRTCMessage>(messageTopic, 1, std::bind(&WebrtcClient::rtc_message_callback, this, std::placeholders::_1));
+
 }
 WebrtcClient::~WebrtcClient()
 {
@@ -171,28 +178,6 @@ bool WebrtcClient::initPeerConnection()
   }
 }
 
-MessageHandler::MessageHandler() {}
-MessageHandler::~MessageHandler() {}
-
-class MessageHandlerImpl : public MessageHandler {
-public:
-  MessageHandlerImpl(WebrtcClientWeakPtr weak_this) : weak_this_(weak_this){}
-  void handle_message(MessageHandler::Type type, const std::string& raw)
-  {
-    WebrtcClientPtr _this = weak_this_.lock();
-    if (_this)
-      _this->signaling_thread_->BlockingCall(
-        [&] { _this->handle_message(type, raw); });
-  }
-private:
-  WebrtcClientWeakPtr weak_this_;
-};
-
-MessageHandler* WebrtcClient::createMessageHandler()
-{
-  return new MessageHandlerImpl(keep_alive_this_);
-}
-
 void WebrtcClient::ping_timer_callback()
 {
     auto s = std::make_shared<std_msgs::msg::String>();
@@ -207,11 +192,11 @@ class DummySetSessionDescriptionObserver
 public:
   virtual void OnSuccess()
   {
-    //// RCLCPP_DEBUG(_node->get_logger(),__FUNCTION__);
+    RCLCPP_DEBUG(rclcpp::get_logger(), "Set Session Succeeded in %s",  __FUNCTION__);
   }
   virtual void OnFailure(webrtc::RTCError error)
   {
-    //RCLCPP_WARN_STREAM(nh_->get_logger(), __FUNCTION__ << " " << error);
+    RCLCPP_WARN_STREAM(rclcpp::get_logger(), __FUNCTION__ << " " << error);
   }
 
 protected:
@@ -229,6 +214,13 @@ static bool parseUri(const std::string& uri, std::string* scheme_name, std::stri
   else
     *path = "";
   return true;
+}
+
+// handle webrtc_ros_msgs::msg::WebRTCMessage
+void WebrtcClient::rtc_message_callback(webrtc_ros_msgs::msg::WebRTCMessage::SharedPtr msg) 
+{
+    signaling_thread_->BlockingCall(
+      [&] { this->handle_message(msg->type, msg->raw); });
 }
 
 void WebrtcClient::handle_message(MessageHandler::Type type, const std::string& raw)

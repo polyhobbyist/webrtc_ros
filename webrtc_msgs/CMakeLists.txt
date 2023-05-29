@@ -9,6 +9,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/IceServer.msg"
   "srv/GetIceServers.srv"
   "msg/WebRTCMessage.msg"
+  "srv/CreateClient.srv"
+  "srv/CloseClient.srv"
    DEPENDENCIES builtin_interfaces
 )
 

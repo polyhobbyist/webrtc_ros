@@ -1,6 +1,7 @@
-int16 Text = 0
-int16 Pong = 1
-int16 Close = 2
+int16 TEXT = 0
+int16 PONG = 1
+int16 CLOSE = 2
 
+string id
 int16 type
-string rawMessage
+string raw_message

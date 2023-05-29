@@ -5,27 +5,19 @@
 namespace webrtc_ros
 {
 
-MessageHandler* WebrtcRosServer_handle_new_signaling_channel(void* _this, SignalingChannel *channel)
-{
-    MessageHandler* result;
-    ((WebrtcRosServer*) _this)->signaling_thread_->BlockingCall([&] { result = ((WebrtcRosServer*) _this)->handle_new_signaling_channel(channel);});
-    return result;
-}
-
 WebrtcRosServer::WebrtcRosServer(rclcpp::Node::SharedPtr nh)
-  : nh_(nh), itf_(nh, std::make_shared<image_transport::ImageTransport>(nh))
+  : nh_(nh), itf_(nh, std::make_shared<image_transport::ImageTransport>(nh)), nextClientId_(0)
 {
   rtc::InitializeSSL();
 
-  int port;
-  nh_->get_parameter_or<int>("port", port, 8080);
-  nh_->get_parameter_or<std::string>("image_transport", image_transport_, std::string("raw"));
-
   signaling_thread_ = rtc::Thread::CreateWithSocketServer();
   signaling_thread_->Start();
-  //TODO polyhobbyist server_.reset(WebrtcWebServer::create(nh_, port, &WebrtcRosServer_handle_new_signaling_channel, this));
+
+  createClientService_ = nh_->create_service<webrtc_ros_msgs::srv::CreateClient>("create_webrtc_client", std::bind(&createClientCallback, this, std::placeholders::_1, std::placeholders::_2));
+  closeClientService_ = nh_->create_service<webrtc_ros_msgs::srv::CloseClient>("close_webrtc_client", std::bind(&closeClientCallback, this, std::placeholders::_1, std::placeholders::_2)); 
 }
 
+// TODO: Called by the WebrtcClient when it is done
 void WebrtcRosServer::cleanupWebrtcClient(WebrtcClient *client) {
   {
     std::unique_lock<std::mutex> lock(clients_mutex_);
@@ -35,22 +27,61 @@ void WebrtcRosServer::cleanupWebrtcClient(WebrtcClient *client) {
   shutdown_cv_.notify_all();
 }
 
-MessageHandler* WebrtcRosServer::handle_new_signaling_channel(SignalingChannel *channel)
+// Implement the CloseClient ROS Service callback
+void closeClientCallback(webrtc_ros_msgs::srv::CloseClient::Request::SharedPtr request,
+                  webrtc_ros_msgs::srv::CloseClient::Response::SharedPtr response)
 {
-  auto client = std::make_shared<WebrtcClient>(nh_, itf_, image_transport_, channel);
+  std::unique_lock<std::mutex> lock(clients_mutex_);
+  auto client = clients_.find(request->instance_id);
+  if (client != clients_.end())
+  {
+    WebrtcClientPtr client_ptr = client->second.lock();
+    if (client_ptr)
+    {
+      cleanupWebrtcClient(client_ptr);
+      response->success = true;
+    }
+    else
+    {
+      response->success = false;
+    }
+  }
+  else
+  {
+    response->success = false;
+  }
+}
 
-	// TODO: Handle cleanup std::bind(&WebrtcRosServer::cleanupWebrtcClient, this, std::placeholders::_1));
-  // hold a shared ptr until the object is initialized (holds a ptr to itself)
+// Implement the CreateClient ROS Service callback
+void createClientCallback(webrtc_ros_msgs::srv::CreateClient::Request::SharedPtr request,
+                  webrtc_ros_msgs::srv::CreateClient::Response::SharedPtr response)
+{
+  auto client = std::make_shared<WebrtcClient>(nh_, itf_, request->image_transport, request->id);
+
+  std::string instanceId = std::to_string(nextClientId_++);
+
   client->init(client);
   {
     std::unique_lock<std::mutex> lock(clients_mutex_);
-    clients_[client.get()] = WebrtcClientWeakPtr(client);
+    clients_[instanceId] = WebrtcClientWeakPtr(client);
   }
-  return client->createMessageHandler();
+
+  response->instance_id = instanceId;
+  response->success = true;
 }
 
 WebrtcRosServer::~WebrtcRosServer()
 {
+  if (createClientService_)
+  {
+    createClientService_.reset();
+  }
+
+  if (closeClientService_)
+  {
+    closeClientService_.reset();
+  }
+
   stop();
 
   // Send all clients messages to shutdown, cannot call dispose of share ptr while holding clients_mutex_

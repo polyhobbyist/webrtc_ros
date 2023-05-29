@@ -5,6 +5,8 @@
 #include <boost/shared_ptr.hpp>
 #include <webrtc_ros/webrtc_client.h>
 #include <condition_variable>
+#include <webrtc_ros_msgs/srv/create_client.hpp>
+#include <webrtc_ros_msgs/srv/close_client.hpp>
 
 namespace webrtc_ros
 {
@@ -24,11 +26,15 @@ private:
 
   std::condition_variable shutdown_cv_;
   std::mutex clients_mutex_;
-  std::map<WebrtcClient*, WebrtcClientWeakPtr> clients_;
+  std::map<std::string, WebrtcClientWeakPtr> clients_;
 
   rclcpp::Node::SharedPtr nh_;
-  std::string image_transport_;
   ImageTransportFactory itf_;
+
+  uint16_t nextClientId_;
+
+  std::shared_ptr<webrtc_ros_msgs::srv::CreateClient> createClientService_;
+  std::shared_ptr<webrtc_ros_msgs::srv::CloseClient> closeClientService_;
 };
 
 }
