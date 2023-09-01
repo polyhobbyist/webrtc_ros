@@ -19,10 +19,14 @@ public:
   void run();
   void stop();
 
-  void cleanupWebrtcClient(WebrtcClient *client);
-
   std::unique_ptr<rtc::Thread>signaling_thread_;
 private:
+
+  void closeClientCallback(webrtc_ros_msgs::srv::CloseClient::Request::SharedPtr request,
+                  webrtc_ros_msgs::srv::CloseClient::Response::SharedPtr response);
+  void createClientCallback(webrtc_ros_msgs::srv::CreateClient::Request::SharedPtr request,
+                  webrtc_ros_msgs::srv::CreateClient::Response::SharedPtr response);
+
 
   std::condition_variable shutdown_cv_;
   std::mutex clients_mutex_;
@@ -33,8 +37,8 @@ private:
 
   uint16_t nextClientId_;
 
-  std::shared_ptr<webrtc_ros_msgs::srv::CreateClient> createClientService_;
-  std::shared_ptr<webrtc_ros_msgs::srv::CloseClient> closeClientService_;
+  std::shared_ptr<rclcpp::Service<webrtc_ros_msgs::srv::CreateClient>> createClientService_;
+  std::shared_ptr<rclcpp::Service<webrtc_ros_msgs::srv::CloseClient>> closeClientService_;
 };
 
 }

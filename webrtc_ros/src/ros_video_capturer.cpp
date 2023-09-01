@@ -30,7 +30,7 @@ void RosVideoCapturer::Stop()
   impl_->Stop();
 }
 
-void RosVideoCapturer::imageCallback(const sensor_msgs::msg::Image::ConstPtr& msg)
+void RosVideoCapturer::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr& msg)
 {
   cv::Mat bgr;
   if (msg->encoding.find("F") != std::string::npos)
@@ -138,7 +138,7 @@ void RosVideoCapturerImpl::Stop()
 }
 
 
-void RosVideoCapturerImpl::imageCallback(const sensor_msgs::msg::Image::ConstPtr& msg)
+void RosVideoCapturerImpl::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr& msg)
 {
   std::unique_lock<std::mutex> lock(state_mutex_);
   if(capturer_ == nullptr)

@@ -13,22 +13,12 @@ WebrtcRosServer::WebrtcRosServer(rclcpp::Node::SharedPtr nh)
   signaling_thread_ = rtc::Thread::CreateWithSocketServer();
   signaling_thread_->Start();
 
-  createClientService_ = nh_->create_service<webrtc_ros_msgs::srv::CreateClient>("create_webrtc_client", std::bind(&createClientCallback, this, std::placeholders::_1, std::placeholders::_2));
-  closeClientService_ = nh_->create_service<webrtc_ros_msgs::srv::CloseClient>("close_webrtc_client", std::bind(&closeClientCallback, this, std::placeholders::_1, std::placeholders::_2)); 
-}
-
-// TODO: Called by the WebrtcClient when it is done
-void WebrtcRosServer::cleanupWebrtcClient(WebrtcClient *client) {
-  {
-    std::unique_lock<std::mutex> lock(clients_mutex_);
-    clients_.erase(client);
-    delete client; // delete while holding the lock so that we do not exit before were done
-  }
-  shutdown_cv_.notify_all();
+  createClientService_ = nh_->create_service<webrtc_ros_msgs::srv::CreateClient>("create_webrtc_client", std::bind(&WebrtcRosServer::createClientCallback, this, std::placeholders::_1, std::placeholders::_2));
+  closeClientService_ = nh_->create_service<webrtc_ros_msgs::srv::CloseClient>("close_webrtc_client", std::bind(&WebrtcRosServer::closeClientCallback, this, std::placeholders::_1, std::placeholders::_2)); 
 }
 
 // Implement the CloseClient ROS Service callback
-void closeClientCallback(webrtc_ros_msgs::srv::CloseClient::Request::SharedPtr request,
+void WebrtcRosServer::closeClientCallback(webrtc_ros_msgs::srv::CloseClient::Request::SharedPtr request,
                   webrtc_ros_msgs::srv::CloseClient::Response::SharedPtr response)
 {
   std::unique_lock<std::mutex> lock(clients_mutex_);
@@ -38,7 +28,9 @@ void closeClientCallback(webrtc_ros_msgs::srv::CloseClient::Request::SharedPtr r
     WebrtcClientPtr client_ptr = client->second.lock();
     if (client_ptr)
     {
-      cleanupWebrtcClient(client_ptr);
+      clients_.erase(request->instance_id);
+      shutdown_cv_.notify_all();
+
       response->success = true;
     }
     else
@@ -53,12 +45,11 @@ void closeClientCallback(webrtc_ros_msgs::srv::CloseClient::Request::SharedPtr r
 }
 
 // Implement the CreateClient ROS Service callback
-void createClientCallback(webrtc_ros_msgs::srv::CreateClient::Request::SharedPtr request,
+void WebrtcRosServer::createClientCallback(webrtc_ros_msgs::srv::CreateClient::Request::SharedPtr request,
                   webrtc_ros_msgs::srv::CreateClient::Response::SharedPtr response)
 {
-  auto client = std::make_shared<WebrtcClient>(nh_, itf_, request->image_transport, request->id);
-
   std::string instanceId = std::to_string(nextClientId_++);
+  auto client = std::make_shared<WebrtcClient>(nh_, itf_, request->image_transport, request->id);
 
   client->init(client);
   {
@@ -67,7 +58,6 @@ void createClientCallback(webrtc_ros_msgs::srv::CreateClient::Request::SharedPtr
   }
 
   response->instance_id = instanceId;
-  response->success = true;
 }
 
 WebrtcRosServer::~WebrtcRosServer()

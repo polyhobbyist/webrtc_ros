@@ -97,7 +97,7 @@ WebrtcClient::WebrtcClient(rclcpp::Node::SharedPtr nh, const ImageTransportFacto
   ping_timer_ = nh_->create_wall_timer(10.0s, std::bind(&WebrtcClient::ping_timer_callback, this));
 
   std::string signalingTopic = "webrtc_client_signaling/" + client_id_;
-  rtc_signal_pub_ = nh_->create_publisher<std_msgs::msg::string>(signalingTopic, 1);
+  rtc_signal_pub_ = nh_->create_publisher<std_msgs::msg::String>(signalingTopic, 1);
 
   std::string messageTopic = "webrtc_client_message/" + client_id_;
   rtc_message_sub_ = nh_->create_subscription<webrtc_ros_msgs::msg::WebRTCMessage>(messageTopic, 1, std::bind(&WebrtcClient::rtc_message_callback, this, std::placeholders::_1));
@@ -180,8 +180,8 @@ bool WebrtcClient::initPeerConnection()
 
 void WebrtcClient::ping_timer_callback()
 {
-    auto s = std::make_shared<std_msgs::msg::String>();
-    s->data = "ping";
+    auto s = std_msgs::msg::String();
+    s.data = "ping";
     rtc_signal_pub_->publish(s);
 }
 
@@ -192,11 +192,11 @@ class DummySetSessionDescriptionObserver
 public:
   virtual void OnSuccess()
   {
-    RCLCPP_DEBUG(rclcpp::get_logger(), "Set Session Succeeded in %s",  __FUNCTION__);
+    RCLCPP_DEBUG(rclcpp::get_logger("webrtc_ros"), "Set Session Succeeded in %s",  __FUNCTION__);
   }
   virtual void OnFailure(webrtc::RTCError error)
   {
-    RCLCPP_WARN_STREAM(rclcpp::get_logger(), __FUNCTION__ << " " << error);
+    RCLCPP_WARN_STREAM(rclcpp::get_logger("webrtc_ros"), __FUNCTION__ << " " << error.message());
   }
 
 protected:
@@ -220,19 +220,19 @@ static bool parseUri(const std::string& uri, std::string* scheme_name, std::stri
 void WebrtcClient::rtc_message_callback(webrtc_ros_msgs::msg::WebRTCMessage::SharedPtr msg) 
 {
     signaling_thread_->BlockingCall(
-      [&] { this->handle_message(msg->type, msg->raw); });
+      [&] { this->handle_webrtc_message_on_thread(msg); });
 }
 
-void WebrtcClient::handle_message(MessageHandler::Type type, const std::string& raw)
+void WebrtcClient::handle_webrtc_message_on_thread(webrtc_ros_msgs::msg::WebRTCMessage::SharedPtr msg)
 {
-  if (type == MessageHandler::TEXT)
+  if (msg->type == webrtc_ros_msgs::msg::WebRTCMessage::TEXT)
   {
     Json::Reader reader;
     Json::Value message_json;
-    RCLCPP_INFO(nh_->get_logger(),"JSON: %s", raw.c_str());
-    if (!reader.parse(raw, message_json))
+    RCLCPP_INFO(nh_->get_logger(),"JSON: %s", msg->raw_message .c_str());
+    if (!reader.parse(msg->raw_message, message_json))
     {
-      RCLCPP_WARN_STREAM(nh_->get_logger(), "Could not parse message: " << raw);
+      RCLCPP_WARN_STREAM(nh_->get_logger(), "Could not parse message: " << msg->raw_message);
       invalidate();
       return;
     }
@@ -431,20 +431,20 @@ void WebrtcClient::handle_message(MessageHandler::Type type, const std::string& 
     {
       std::string message_type;
       WebrtcRosMessage::getType(message_json, &message_type);
-      RCLCPP_WARN_STREAM(nh_->get_logger(), "Unexpected message type: " << message_type << ": " << raw);
+      RCLCPP_WARN_STREAM(nh_->get_logger(), "Unexpected message type: " << message_type << ": " << msg->raw_message);
     }
   }
-  else if (type == MessageHandler::PONG)
+  else if (msg->type == webrtc_ros_msgs::msg::WebRTCMessage::PONG)
   {
     // got a pong from the last ping
   }
-  else if (type == MessageHandler::CLOSE)
+  else if (msg->type == webrtc_ros_msgs::msg::WebRTCMessage::CLOSE)
   {
     invalidate();
   }
   else
   {
-    RCLCPP_WARN_STREAM(nh_->get_logger(), "Unexpected signaling message type: " << type << ": " << raw);
+    RCLCPP_WARN_STREAM(nh_->get_logger(), "Unexpected signaling message type: " << msg->type << ": " << msg->raw_message);
   }
 }
 
@@ -458,9 +458,9 @@ void WebrtcClient::OnSessionDescriptionSuccess(webrtc::SessionDescriptionInterfa
   {
     RCLCPP_DEBUG_STREAM(nh_->get_logger(), "Created local description: " << message.sdp);
 
-    auto s = std::make_shared<std_msgs::msg::String>();
-    s.get()->data = message.toJson();
-    rtc_signal_pub_->publish(s);
+    auto msg = std_msgs::msg::String();
+    msg.data = message.toJson();
+    rtc_signal_pub_->publish(msg);
   }
   else
   {
@@ -478,9 +478,9 @@ void WebrtcClient::OnIceCandidate(const webrtc::IceCandidateInterface* candidate
   if (message.fromIceCandidate(*candidate))
   {
     RCLCPP_DEBUG_STREAM(nh_->get_logger(), "Got local ICE candidate: " << message.toJson());
-    auto s = std::make_shared<std_msgs::msg::String>();
-    s.get()->data = message.toJson();
-    rtc_signal_pub_->publish(s);
+    auto msg = std_msgs::msg::String();
+    msg.data = message.toJson();
+    rtc_signal_pub_->publish(msg);
   }
   else
   {

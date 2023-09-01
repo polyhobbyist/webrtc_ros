@@ -25,6 +25,9 @@
 #include <webrtc/rtc_base/thread.h>
 #include <webrtc_ros_msgs/msg/web_rtc_message.hpp>
 
+#include <std_msgs/msg/string.hpp>
+
+
 
 namespace webrtc_ros
 {
@@ -58,9 +61,9 @@ private:
 class WebrtcClient
 {
 public:
-  WebrtcClient(rclcpp::Node::SharedPtr nh, const ImageTransportFactory& itf, const std::string& transport, const std::string& client_id));
+  WebrtcClient(rclcpp::Node::SharedPtr nh, const ImageTransportFactory& itf, const std::string& transport, const std::string& client_id);
   ~WebrtcClient();
-  
+
   void init(std::shared_ptr<WebrtcClient>& keep_alive_ptr);
   void invalidate();
   bool valid();
@@ -73,7 +76,8 @@ private:
 
   void ping_timer_callback();
 
-  void handle_message(MessageHandler::Type type, const std::string& message);
+  void rtc_message_callback(webrtc_ros_msgs::msg::WebRTCMessage::SharedPtr msg);
+  void handle_webrtc_message_on_thread(webrtc_ros_msgs::msg::WebRTCMessage::SharedPtr msg);
 
   void OnSessionDescriptionSuccess(webrtc::SessionDescriptionInterface*);
   void OnSessionDescriptionFailure(const std::string&);
@@ -87,7 +91,7 @@ private:
   std::string transport_;
   std::string client_id_;
 
-  std::shared_ptr<rclcpp::Publisher<std_msgs::msg::string>> rtc_signal_pub_;
+  std::shared_ptr<rclcpp::Publisher<std_msgs::msg::String>> rtc_signal_pub_;
   std::shared_ptr<rclcpp::Subscription<webrtc_ros_msgs::msg::WebRTCMessage>> rtc_message_sub_;
 
   std::unique_ptr<rtc::Thread> worker_thread_;
@@ -101,8 +105,9 @@ private:
 
   rclcpp::TimerBase::SharedPtr ping_timer_;
 
+  std::unique_ptr<rtc::Thread>signaling_thread_;
+
   friend WebrtcClientObserverProxy;
-  friend MessageHandlerImpl;
 };
 
 }
