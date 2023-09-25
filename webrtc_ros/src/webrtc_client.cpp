@@ -146,6 +146,7 @@ bool WebrtcClient::initPeerConnection()
         }
       }
     }
+    config.sdp_semantics = webrtc::SdpSemantics::kPlanB_DEPRECATED;
 
     WebrtcClientWeakPtr weak_this(keep_alive_this_);
     webrtc_observer_proxy_ = new rtc::RefCountedObject<WebrtcClientObserverProxy>(weak_this);
@@ -281,9 +282,7 @@ void WebrtcClient::handle_message(MessageHandler::Type type, const std::string& 
 
             if(action.type == ConfigureAction::kAddStreamActionName) {
               FIND_PROPERTY_OR_CONTINUE("id", stream_id);
-
                     rtc::scoped_refptr<webrtc::MediaStreamInterface> stream = peer_connection_factory_->CreateLocalMediaStream(stream_id);
-
                     if (!peer_connection_->AddStream(stream.get()))
                     {
                       RCLCPP_WARN(nh_->get_logger(), "Adding stream to PeerConnection failed");
