@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 project(webrtc_ros)
 
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(async_web_server_cpp REQUIRED)
 find_package(cv_bridge REQUIRED)
@@ -11,7 +12,7 @@ find_package(webrtc_ros_msgs REQUIRED)
 find_package(webrtc REQUIRED)
 find_package(X11 REQUIRED)
 find_package(jsoncpp REQUIRED)
-
+find_package(rclpy REQUIRED)
 
 ###########
 ## Build ##
@@ -68,6 +69,15 @@ target_link_libraries(${PROJECT_NAME}_server_node
 )
 
 set_target_properties(${PROJECT_NAME}_server_node PROPERTIES COMPILE_OPTIONS "-std=c++17")
+
+# Install Python executables
+install(PROGRAMS
+    scripts/ice_server_service.py
+    DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install Python modules
+ament_python_install_package(${PROJECT_NAME})
 
 #############
 ## Install ##
