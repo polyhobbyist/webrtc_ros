@@ -60,6 +60,7 @@ void RosVideoCapturer::imageCallback(const sensor_msgs::msg::Image::ConstPtr& ms
   int64_t translated_camera_time_us;
   if (AdaptFrame(bgr.cols, bgr.rows, system_time_us, &out_width, &out_height, &roi.width, &roi.height, &roi.x, &roi.y))
   {
+    // Warning: When resizing to YUV format image width and height must be even size (w%2 == 0 )
     cv::Mat yuv;
     if (out_width == roi.width && out_height == roi.height)
     {
