@@ -180,7 +180,8 @@ window.WebrtcRos = (function() {
 									"dest":local_stream_config.video.dest
 								});
 							}
-							self.peerConnection.addStream(stream);
+							// self.peerConnection.addStream(stream);
+							stream?.getTracks().forEach((track) => {peerConnection.addTrack(track, stream)})
 							resolve({
 								"stream": stream,
 								"remove": new Promise(function(resolve, reject) {

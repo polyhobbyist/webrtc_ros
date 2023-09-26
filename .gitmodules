@@ -1,0 +1,3 @@
+[submodule "async_web_server_cpp"]
+	path = async_web_server_cpp
+	url = https://github.com/erblinium/async_web_server_cpp.git

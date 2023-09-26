@@ -1,59 +1,58 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import json
-import rospy
+import rclpy
+from rclpy.node import Node
+from webrtc_ros_msgs.msg import IceServer
+from webrtc_ros_msgs.srv import GetIceServers
 import requests
-from webrtc_ros.msg import IceServer
-from webrtc_ros.srv import GetIceServers, GetIceServersResponse
 
-
-class IceServerManager(object):
+class IceServerManager(Node):
     """ Manages providing ice server information to the webrtc system """
 
     def __init__(self):
-        rospy.init_node('ice_server_provider')
+        super().__init__('ice_server_provider')
 
-        self.stun_servers = rospy.get_param('~stun_servers', [
+        self.stun_servers = self.get_parameter_or('stun_servers', [
             'stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'])
-        self.turn_server_uris = rospy.get_param('~turn_server_uris', '')
-        self.turn_creds_uri = rospy.get_param('~turn_server_creds_uri', '')
-        self.turn_creds_username = rospy.get_param(
-            '~turn_server_creds_username', '')
-        self.turn_creds_password = rospy.get_param(
-            '~turn_server_creds_password', '')
+        self.turn_server_uris = self.get_parameter_or('turn_server_uris', [])
+        self.turn_creds_uri = self.get_parameter_or('turn_server_creds_uri', '')
+        self.turn_creds_username = self.get_parameter_or(
+            'turn_server_creds_username', '')
+        self.turn_creds_password = self.get_parameter_or(
+            'turn_server_creds_password', '')
 
-        self.get_ice_servers_service = rospy.Service(
-            'get_ice_servers', GetIceServers, self.get_ice_servers)
+        self.get_ice_servers_service = self.create_service(
+            GetIceServers, 'get_ice_servers', self.get_ice_servers)
 
-        rospy.loginfo('Ice Server Provider Up')
-        rospy.spin()
+        self.get_logger().info('Ice Server Provider Up')
 
     def get_turn_creds(self):
         """Get the credentials from the turn server."""
         if self.turn_creds_uri:
-            rospy.logdebug('getting turn server credentials')
-            resp = requests.post(self.turn_creds_uri,
-                                 {'username': self.turn_creds_username,
-                                  'password':  self.turn_creds_password})
+            self.get_logger().debug('getting turn server credentials')
+            resp = requests.post(self.turn_creds_uri, json={
+                'username': self.turn_creds_username,
+                'password': self.turn_creds_password
+            })
             try:
-                rospy.loginfo('trying to parse response from server')
+                self.get_logger().info('trying to parse response from server')
                 data = resp.json()
-                if('username' in data and 'password' in data):
-                    rospy.loginfo('succesfully received turn credentials')
+                if 'username' in data and 'password' in data:
+                    self.get_logger().info('successfully received turn credentials')
                     return data
-                rospy.logwarn(
+                self.get_logger().warn(
                     'response did not have username and password fields')
             except AttributeError:
-                rospy.logerr(
+                self.get_logger().error(
                     'server did not respond with JSON, response code: %i',
                     resp.status_code)
         else:
-            rospy.logdebug('No uri provided for turn credentials')
+            self.get_logger().debug('No URI provided for turn credentials')
         return False
 
-    def get_ice_servers(self, _):
+    def get_ice_servers(self, request, response):
         """Callback for service. Returns the ice servers"""
-        resp = GetIceServersResponse()
         turn_creds = self.get_turn_creds()
         if turn_creds:
             for uri in self.turn_server_uris:
@@ -61,13 +60,19 @@ class IceServerManager(object):
                 serv.uri = uri
                 serv.username = turn_creds['username']
                 serv.password = turn_creds['password']
-                resp.servers.append(serv)
+                response.servers.append(serv)
         for suri in self.stun_servers:
             serv = IceServer()
             serv.uri = suri
-            resp.servers.append(serv)
-        return resp
+            response.servers.append(serv)
+        return response
 
+def main(args=None):
+    rclpy.init(args=args)
+    ice_server_manager = IceServerManager()
+    rclpy.spin(ice_server_manager)
+    ice_server_manager.destroy_node()
+    rclpy.shutdown()
 
 if __name__ == '__main__':
-    IceServerManager()
+    main()
