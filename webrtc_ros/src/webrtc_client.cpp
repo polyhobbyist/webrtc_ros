@@ -150,18 +150,17 @@ bool WebrtcClient::initPeerConnection()
 
     WebrtcClientWeakPtr weak_this(keep_alive_this_);
     webrtc_observer_proxy_ = new rtc::RefCountedObject<WebrtcClientObserverProxy>(weak_this);
-    peer_connection_ = peer_connection_factory_->CreatePeerConnection(
-            config,
-            nullptr,
-            nullptr,
-            webrtc_observer_proxy_.get()
-    );
-    if (!peer_connection_.get())
+    auto dependencies = webrtc::PeerConnectionDependencies{webrtc_observer_proxy_.get()};
+    auto peer_connection_or_error = peer_connection_factory_->CreatePeerConnectionOrError(config, webrtc::PeerConnectionDependencies{webrtc_observer_proxy_.get()});
+    if (!peer_connection_or_error.ok())
     {
       RCLCPP_WARN(nh_->get_logger(), "Could not create peer connection");
       invalidate();
       return false;
     }
+
+    peer_connection_ = peer_connection_or_error.value();
+
     return true;
   }
   else
