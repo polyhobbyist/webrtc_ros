@@ -9,12 +9,6 @@ WebrtcRosServer::WebrtcRosServer(rclcpp::Node::SharedPtr nh)
   : nh_(nh), itf_(nh, std::make_shared<image_transport::ImageTransport>(nh)), nextClientId_(0)
 {
   rtc::InitializeSSL();
-
-  signaling_thread_ = rtc::Thread::CreateWithSocketServer();
-  signaling_thread_->Start();
-
-  createClientService_ = nh_->create_service<webrtc_ros_msgs::srv::CreateClient>("create_webrtc_client", std::bind(&WebrtcRosServer::createClientCallback, this, std::placeholders::_1, std::placeholders::_2));
-  closeClientService_ = nh_->create_service<webrtc_ros_msgs::srv::CloseClient>("close_webrtc_client", std::bind(&WebrtcRosServer::closeClientCallback, this, std::placeholders::_1, std::placeholders::_2)); 
 }
 
 // Implement the CloseClient ROS Service callback
@@ -49,18 +43,33 @@ void WebrtcRosServer::createClientCallback(webrtc_ros_msgs::srv::CreateClient::R
                   webrtc_ros_msgs::srv::CreateClient::Response::SharedPtr response)
 {
   std::string instanceId = std::to_string(nextClientId_++);
-  auto client = std::make_shared<WebrtcClient>(nh_, itf_, request->image_transport, request->id);
+  auto client = std::make_shared<WebrtcClient>(nh_, itf_, request->image_transport, instanceId);
 
-  client->init(client);
+  if (client->init(client))
   {
     std::unique_lock<std::mutex> lock(clients_mutex_);
     clients_[instanceId] = WebrtcClientWeakPtr(client);
+    response->instance_id = instanceId;
   }
-
-  response->instance_id = instanceId;
 }
 
 WebrtcRosServer::~WebrtcRosServer()
+{
+  stop();
+}
+
+void WebrtcRosServer::run()
+{
+  stop();
+  
+  signaling_thread_ = rtc::Thread::CreateWithSocketServer();
+  signaling_thread_->Start();
+
+  createClientService_ = nh_->create_service<webrtc_ros_msgs::srv::CreateClient>("create_webrtc_client", std::bind(&WebrtcRosServer::createClientCallback, this, std::placeholders::_1, std::placeholders::_2));
+  closeClientService_ = nh_->create_service<webrtc_ros_msgs::srv::CloseClient>("close_webrtc_client", std::bind(&WebrtcRosServer::closeClientCallback, this, std::placeholders::_1, std::placeholders::_2)); 
+}
+
+void WebrtcRosServer::stop()
 {
   if (createClientService_)
   {
@@ -71,8 +80,6 @@ WebrtcRosServer::~WebrtcRosServer()
   {
     closeClientService_.reset();
   }
-
-  stop();
 
   // Send all clients messages to shutdown, cannot call dispose of share ptr while holding clients_mutex_
   // It will deadlock if it is the last shared_ptr because it will try to remove it from the client list
@@ -95,17 +102,13 @@ WebrtcRosServer::~WebrtcRosServer()
     shutdown_cv_.wait(lock, [this]{ return this->clients_.size() == 0; });
   }
 
+  if (signaling_thread_)
+  {
+    signaling_thread_->Stop();
+    signaling_thread_.reset();
+  }
+
   rtc::CleanupSSL();
-}
-
-void WebrtcRosServer::run()
-{
-  //server_->run();
-}
-
-void WebrtcRosServer::stop()
-{
-  //server_->stop();
 }
 
 }

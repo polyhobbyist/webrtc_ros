@@ -72,6 +72,29 @@ WebrtcClient::WebrtcClient(rclcpp::Node::SharedPtr nh, const ImageTransportFacto
     signaling_thread_(rtc::Thread::Current()), worker_thread_(rtc::Thread::CreateWithSocketServer()),
     client_id_(client_id)
 {
+
+}
+
+WebrtcClient::~WebrtcClient()
+{
+  if(valid()) {
+    RCLCPP_FATAL(nh_->get_logger(), "WebrtcClient destructor should only be called once it's invalidated");
+  }
+  RCLCPP_INFO(nh_->get_logger(),"Destroying Webrtc Client");
+}
+
+void WebrtcClient::invalidate()
+{
+  keep_alive_this_.reset();
+}
+bool WebrtcClient::valid()
+{
+  return keep_alive_this_ != nullptr;
+}
+
+bool WebrtcClient::start(std::shared_ptr<WebrtcClient>& keep_alive_ptr)
+{
+  keep_alive_this_ = keep_alive_ptr;
   worker_thread_->Start();
 
   it_ = std::make_shared<image_transport::ImageTransport>(nh);
@@ -87,11 +110,12 @@ WebrtcClient::WebrtcClient(rclcpp::Node::SharedPtr nh, const ImageTransportFacto
             new webrtc::MultiplexDecoderFactory(
                 std::make_unique<webrtc::InternalDecoderFactory>())),
         nullptr, nullptr);
+
   if (!peer_connection_factory_.get())
   {
-    RCLCPP_WARN(nh_->get_logger(), "Could not create peer connection factory");
+    RCLCPP_ERROR(nh_->get_logger(), "Could not create peer connection factory");
     invalidate();
-    return;
+    return false;
   }
 
   ping_timer_ = nh_->create_wall_timer(10.0s, std::bind(&WebrtcClient::ping_timer_callback, this));
@@ -102,26 +126,8 @@ WebrtcClient::WebrtcClient(rclcpp::Node::SharedPtr nh, const ImageTransportFacto
   std::string messageTopic = "webrtc_client_message/" + client_id_;
   rtc_message_sub_ = nh_->create_subscription<webrtc_ros_msgs::msg::WebRTCMessage>(messageTopic, 1, std::bind(&WebrtcClient::rtc_message_callback, this, std::placeholders::_1));
 
-}
-WebrtcClient::~WebrtcClient()
-{
-  if(valid()) {
-    RCLCPP_FATAL(nh_->get_logger(), "WebrtcClient destructor should only be called once it's invalidated");
-  }
-  RCLCPP_INFO(nh_->get_logger(),"Destroying Webrtc Client");
-}
+  return true;
 
-void WebrtcClient::init(std::shared_ptr<WebrtcClient>& keep_alive_ptr)
-{
-  keep_alive_this_ = keep_alive_ptr;
-}
-void WebrtcClient::invalidate()
-{
-  keep_alive_this_.reset();
-}
-bool WebrtcClient::valid()
-{
-  return keep_alive_this_ != nullptr;
 }
 
 

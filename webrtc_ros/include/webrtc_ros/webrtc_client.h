@@ -64,7 +64,8 @@ public:
   WebrtcClient(rclcpp::Node::SharedPtr nh, const ImageTransportFactory& itf, const std::string& transport, const std::string& client_id);
   ~WebrtcClient();
 
-  void init(std::shared_ptr<WebrtcClient>& keep_alive_ptr);
+  bool start(std::shared_ptr<WebrtcClient>& keep_alive_ptr);
+
   void invalidate();
   bool valid();
 
