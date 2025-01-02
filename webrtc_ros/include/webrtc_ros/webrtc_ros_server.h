@@ -18,8 +18,6 @@ public:
   ~WebrtcRosServer();
   void run();
   void stop();
-
-  std::unique_ptr<rtc::Thread>signaling_thread_;
 private:
 
   void closeClientCallback(webrtc_ros_msgs::srv::CloseClient::Request::SharedPtr request,

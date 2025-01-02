@@ -1,25 +1,38 @@
-webrtc_ros [![Build Status](https://api.travis-ci.org/RobotWebTools/webrtc_ros.png)](https://travis-ci.org/RobotWebTools/webrtc_ros)
-================
+# WebRTC ROS 2 Node
+This is a ROS 2 package that provides a WebRTC peer that can be configured to stream a ROS image topic and recieve a stream that is published to a ROS image topic.
 
-#### Streaming of ROS Image Topics using WebRTC
-This node provides a WebRTC peer that can be configured to stream a ROS image topic and recieve a stream that is published to a ROS image topic.
-The node hosts a webserver that serves a simple test page and offers a websocket server that can be used to create and configure a WebRTC peer.
-
-For full documentation, see [the ROS wiki](http://wiki.ros.org/webrtc_ros).
-
-This project is released as part of the [Robot Web Tools](http://robotwebtools.org/) effort.
-
-### Building 
-#### Prerequisites
+## Installation
 
 ```bash
-sudo apt-get install libgtk-3-dev
-git clone -b ros2-develop https://github.com/fkie/async_web_server_cpp
+sudo apt-get install libgtk-3-dev pulseaudio
 ```
 
+## Testing
+Suggest downloading a test image to use for testing.  The following is a good test image: https://en.wikipedia.org/wiki/Test_card#/media/File:Philips_PM5544.svg. Copy this into the media folder and run:
 
-### License
+```bash
+ros2 run image_transport_tutorials my_publisher webrtc_ros/src/webrtc_ros/media/Phillips_PM5544.svg.png
+```
+This creates a camera with just the test image.
+
+Then run the webrtc_ros node:
+
+```bash
+ros2 launch webrtc_ros webrtc_ros_server.launch.py
+```
+You can then launch the test web server by running:
+
+```bash
+python webrtc_ros/scripts/server.py
+```
+
+Then navigate to http://localhost:8080 in a web browser. 
+
+
+
+
+## License
 webrtc_ros is released with a BSD license. For full terms and conditions, see the [LICENSE](LICENSE) file.
 
-### Authors
-See the [AUTHORS](AUTHORS.md) file for a full list of contributors.
+## References
+This project is derived from the [Robot Web Tools](http://robotwebtools.org/) effort.

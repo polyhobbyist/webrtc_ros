@@ -1,2 +1,7 @@
 CMakeLists.txt
 .vscode/
+
+**/__pycache__/
+**/*.pyc
+
+media/

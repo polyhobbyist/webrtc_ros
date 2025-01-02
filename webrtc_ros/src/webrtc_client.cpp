@@ -69,15 +69,16 @@ void WebrtcClientObserverProxy::OnSignalingChange(webrtc::PeerConnectionInterfac
 
 WebrtcClient::WebrtcClient(rclcpp::Node::SharedPtr nh, const ImageTransportFactory& itf, const std::string& transport, const std::string& client_id)
   : nh_(nh), itf_(itf), transport_(transport),
-    signaling_thread_(rtc::Thread::Current()), worker_thread_(rtc::Thread::CreateWithSocketServer()),
+    signaling_thread_(rtc::Thread::CreateWithSocketServer()), // rtc::Thread::Current()), 
+    worker_thread_(rtc::Thread::CreateWithSocketServer()),
     client_id_(client_id)
 {
-
+  RCLCPP_INFO(nh_->get_logger(),"Creating Webrtc Client %s", client_id.c_str());
 }
 
 WebrtcClient::~WebrtcClient()
 {
-  if(valid()) {
+  if (valid()) {
     RCLCPP_FATAL(nh_->get_logger(), "WebrtcClient destructor should only be called once it's invalidated");
   }
   RCLCPP_INFO(nh_->get_logger(),"Destroying Webrtc Client");
@@ -97,7 +98,7 @@ bool WebrtcClient::start(std::shared_ptr<WebrtcClient>& keep_alive_ptr)
   keep_alive_this_ = keep_alive_ptr;
   worker_thread_->Start();
 
-  it_ = std::make_shared<image_transport::ImageTransport>(nh);
+  it_ = std::make_shared<image_transport::ImageTransport>(nh_);
   
   peer_connection_factory_  = webrtc::CreatePeerConnectionFactory(
         worker_thread_.get(), worker_thread_.get(), worker_thread_.get(),
@@ -224,12 +225,6 @@ static bool parseUri(const std::string& uri, std::string* scheme_name, std::stri
 
 // handle webrtc_ros_msgs::msg::WebRTCMessage
 void WebrtcClient::rtc_message_callback(webrtc_ros_msgs::msg::WebRTCMessage::SharedPtr msg) 
-{
-    signaling_thread_->BlockingCall(
-      [&] { this->handle_webrtc_message_on_thread(msg); });
-}
-
-void WebrtcClient::handle_webrtc_message_on_thread(webrtc_ros_msgs::msg::WebRTCMessage::SharedPtr msg)
 {
   if (msg->type == webrtc_ros_msgs::msg::WebRTCMessage::TEXT)
   {

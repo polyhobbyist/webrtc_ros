@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebRTC Interface</title>
+</head>
+<body>
+  <h1>WebRTC Interface</h1>
+  <video id="remoteVideo" autoplay playsinline></video>
+  <button id="startButton">Start</button>
+  <button id="callButton" disabled>Call</button>
+  <button id="hangupButton" disabled>Hang Up</button>
+
+  <script>
+    let localStream;
+    let actions = [];
+    let pc = new RTCPeerConnection();
+
+
+    var ws = new WebSocket("ws://localhost:8000/ws");
+    ws.onmessage = async function(event) {
+      var self = this;
+      var dataJson = JSON.parse(event.data);
+      if (dataJson.type === "offer") {
+        console.log("Received WebRTC offer via WebRTC signaling channel");
+        this.peerConnection.setRemoteDescription(new RTCSessionDescription(dataJson),
+          function() {
+            var self = this;
+            var mediaConstraints = {"optional": [
+              {"OfferToReceiveVideo": true}
+            ]};
+
+            pc.createAnswer(
+              function(sessionDescription) {
+                self.peerConnection.setLocalDescription(sessionDescription);
+                var data = JSON.stringify(sessionDescription);
+                ws.send(data);
+              }, function(error) {
+                console.warn("Create answer error:", error);
+              }, mediaConstraints
+            );
+            
+            ws.send(JSON.stringify(msg));
+          },
+          function(event) {
+            console.error("onRemoteSdpError", event);
+          }
+        );
+      }
+      else if(dataJson.type === "ice_candidate") {
+        console.log("Received WebRTC ice_candidate via WebRTC signaling channel");
+        var candidate = new RTCIceCandidate({sdpMLineIndex: dataJson.sdp_mline_index, candidate: dataJson.candidate});
+        this.peerConnection.addIceCandidate(candidate);
+      }
+      else
+      {
+        console.warn("Received unknown message type '" + dataJson.type + "' via WebRTC signaling channel");
+      }
+    };
+
+    const startButton = document.getElementById('startButton');
+    const callButton = document.getElementById('callButton');
+    const hangupButton = document.getElementById('hangupButton');
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+
+    startButton.onclick = async () => {
+      callButton.disabled = false;
+    };
+
+    callButton.onclick = async () => {
+      pc.onicecandidate = event => {
+        if (event.candidate) {
+          var candidate = {
+            sdp_mline_index: event.candidate.sdpMLineIndex,
+            sdp_mid: event.candidate.sdpMid,
+            candidate: event.candidate.candidate,
+            type: "ice_candidate"
+          };
+          ws.send(JSON.stringify(candidate));
+        }
+      }
+
+    actions.push({
+          type: "add_video_track",
+          id: "/subscribed_video",
+          src: "ros_image:/camera/image_raw",
+          stream_id: "1"
+        });
+
+      var configMessage = {"type": "configure", "actions": actions};
+      ws.send(JSON.stringify(configMessage));
+      console.log("WebRTC ROS Configure: ", actions);        
+
+      hangupButton.disabled = false;
+    };
+
+    hangupButton.onclick = () => {
+      pc.close();
+      pc = null;
+      hangupButton.disabled = true;
+      callButton.disabled = false;
+    };
+  </script>
+</body>
+</html>

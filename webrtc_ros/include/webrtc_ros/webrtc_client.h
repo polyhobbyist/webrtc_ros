@@ -79,7 +79,7 @@ private:
 
   void rtc_message_callback(webrtc_ros_msgs::msg::WebRTCMessage::SharedPtr msg);
   void handle_webrtc_message_on_thread(webrtc_ros_msgs::msg::WebRTCMessage::SharedPtr msg);
-
+  
   void OnSessionDescriptionSuccess(webrtc::SessionDescriptionInterface*);
   void OnSessionDescriptionFailure(const std::string&);
   void OnAddRemoteStream(rtc::scoped_refptr<webrtc::MediaStreamInterface>);

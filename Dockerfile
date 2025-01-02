@@ -1,4 +1,4 @@
-FROM ros:foxy
+FROM ros:humble
 
 
 # ROS dependencies
@@ -15,8 +15,8 @@ RUN apt update && \
         libcurl4-openssl-dev \
         libssl-dev \
         curl \
-        ros-foxy-cv-bridge \
-        ros-foxy-image-transport \
+        ros-$ROS_DISTRO-cv-bridge \
+        ros-$ROS_DISTRO-image-transport \
         && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -41,8 +41,6 @@ RUN git clone https://github.com/open-source-parsers/jsoncpp.git . && \
     make install
 
 ENV LD_LIBRARY_PATH /usr/local/lib/:$LD_LIBRARY_PATH
-
-RUN git clone https://github.com/GT-RAIL/async_web_server_cpp.git /home/webrtc_ws/src/async_web_server_cpp/
 
 RUN /ros_entrypoint.sh colcon build --symlink-install
 

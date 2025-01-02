@@ -15,6 +15,7 @@ WebrtcRosServer::WebrtcRosServer(rclcpp::Node::SharedPtr nh)
 void WebrtcRosServer::closeClientCallback(webrtc_ros_msgs::srv::CloseClient::Request::SharedPtr request,
                   webrtc_ros_msgs::srv::CloseClient::Response::SharedPtr response)
 {
+  response->success = false;
   std::unique_lock<std::mutex> lock(clients_mutex_);
   auto client = clients_.find(request->instance_id);
   if (client != clients_.end())
@@ -26,15 +27,8 @@ void WebrtcRosServer::closeClientCallback(webrtc_ros_msgs::srv::CloseClient::Req
       shutdown_cv_.notify_all();
 
       response->success = true;
+      return;
     }
-    else
-    {
-      response->success = false;
-    }
-  }
-  else
-  {
-    response->success = false;
   }
 }
 
@@ -42,14 +36,33 @@ void WebrtcRosServer::closeClientCallback(webrtc_ros_msgs::srv::CloseClient::Req
 void WebrtcRosServer::createClientCallback(webrtc_ros_msgs::srv::CreateClient::Request::SharedPtr request,
                   webrtc_ros_msgs::srv::CreateClient::Response::SharedPtr response)
 {
-  std::string instanceId = std::to_string(nextClientId_++);
-  auto client = std::make_shared<WebrtcClient>(nh_, itf_, request->image_transport, instanceId);
+  response->instance_id = "";
 
-  if (client->init(client))
+  if (request->image_transport.empty())
+  {
+    RCLCPP_ERROR(nh_->get_logger(), "Image transport must be specified");
+    return;
+  }
+
+  if (request->id.empty())
+  {
+    RCLCPP_ERROR(nh_->get_logger(), "Client ID must be specified");
+    return;
+  }
+
+  if (clients_.find(request->id) != clients_.end())
+  {
+    RCLCPP_ERROR(nh_->get_logger(), "Client ID already exists");
+    return;
+  }
+
+  auto client = std::make_shared<WebrtcClient>(nh_, itf_, request->image_transport, request->id);
+
+  if (client->start(client))
   {
     std::unique_lock<std::mutex> lock(clients_mutex_);
-    clients_[instanceId] = WebrtcClientWeakPtr(client);
-    response->instance_id = instanceId;
+    clients_[request->id] = WebrtcClientWeakPtr(client);
+    response->instance_id = request->id;
   }
 }
 
@@ -62,9 +75,6 @@ void WebrtcRosServer::run()
 {
   stop();
   
-  signaling_thread_ = rtc::Thread::CreateWithSocketServer();
-  signaling_thread_->Start();
-
   createClientService_ = nh_->create_service<webrtc_ros_msgs::srv::CreateClient>("create_webrtc_client", std::bind(&WebrtcRosServer::createClientCallback, this, std::placeholders::_1, std::placeholders::_2));
   closeClientService_ = nh_->create_service<webrtc_ros_msgs::srv::CloseClient>("close_webrtc_client", std::bind(&WebrtcRosServer::closeClientCallback, this, std::placeholders::_1, std::placeholders::_2)); 
 }
@@ -100,12 +110,6 @@ void WebrtcRosServer::stop()
   {
     std::unique_lock<std::mutex> lock(clients_mutex_);
     shutdown_cv_.wait(lock, [this]{ return this->clients_.size() == 0; });
-  }
-
-  if (signaling_thread_)
-  {
-    signaling_thread_->Stop();
-    signaling_thread_.reset();
   }
 
   rtc::CleanupSSL();
