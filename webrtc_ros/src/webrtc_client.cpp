@@ -268,15 +268,7 @@ void WebrtcClient::rtc_message_callback(webrtc_ros_msgs::msg::WebRTCMessage::Sha
             // END OF MACRO
 
             if(action.type == ConfigureAction::kAddStreamActionName) {
-              FIND_PROPERTY_OR_CONTINUE("id", stream_id);
-
-                    rtc::scoped_refptr<webrtc::MediaStreamInterface> stream = peer_connection_factory_->CreateLocalMediaStream(stream_id);
-
-                    if (!peer_connection_->AddStream(stream.get()))
-                    {
-                      RCLCPP_WARN(nh_->get_logger(), "Adding stream to PeerConnection failed");
-                continue;
-                    }
+              // no longer needed
             }
             else if(action.type == ConfigureAction::kRemoveStreamActionName) {
               FIND_PROPERTY_OR_CONTINUE("id", stream_id);
@@ -296,31 +288,27 @@ void WebrtcClient::rtc_message_callback(webrtc_ros_msgs::msg::WebRTCMessage::Sha
 
               std::string video_type;
               std::string video_path;
-              if(!parseUri(src, &video_type, &video_path)) {
+              if (!parseUri(src, &video_type, &video_path)) {
                 RCLCPP_WARN_STREAM(nh_->get_logger(), "Invalid URI: " << src);
                 continue;
               }
 
-                    webrtc::MediaStreamInterface* stream = peer_connection_->local_streams()->find(stream_id);
-              if(!stream) {
-                RCLCPP_WARN_STREAM(nh_->get_logger(), "Stream not found with id: " << stream_id);
+              if (video_type != "ros_image") {
+                RCLCPP_WARN_STREAM(nh_->get_logger(), "Unknown video source type: " << video_type);
                 continue;
               }
 
-              if(video_type == "ros_image") {
-                      RCLCPP_DEBUG_STREAM(nh_->get_logger(), "Subscribing to ROS topic: " << video_path);
-                      rtc::scoped_refptr<RosVideoCapturer> capturer(new rtc::RefCountedObject<RosVideoCapturer>(itf_, video_path, transport_));
-                      rtc::scoped_refptr<webrtc::VideoTrackInterface> video_track(
-                        peer_connection_factory_->CreateVideoTrack(
-                          track_id,
-                          capturer.get()));
-                      stream->AddTrack(video_track);
-                      capturer->Start();
-              }
-              else {
-                RCLCPP_WARN_STREAM(nh_->get_logger(), "Unknown video source type: " << video_type);
-              }
+              RCLCPP_DEBUG_STREAM(nh_->get_logger(), "Subscribing to ROS topic: " << video_path);
+              rtc::scoped_refptr<RosVideoCapturer> capturer(new rtc::RefCountedObject<RosVideoCapturer>(itf_, video_path, transport_));
+              rtc::scoped_refptr<webrtc::VideoTrackInterface> video_track(
+                peer_connection_factory_->CreateVideoTrack(
+                  track_id,
+                  capturer.get()));
 
+              std::vector<std::string> stream_ids;
+              stream_ids.push_back(stream_id);
+              peer_connection_->AddTrack(video_track, stream_ids);
+              capturer->Start();
             }
             else if(action.type == ConfigureAction::kAddAudioTrackActionName) {
               FIND_PROPERTY_OR_CONTINUE("stream_id", stream_id);
@@ -457,7 +445,7 @@ void WebrtcClient::OnSessionDescriptionSuccess(webrtc::SessionDescriptionInterfa
   SdpMessage message;
   if (message.fromSessionDescription(*description))
   {
-    RCLCPP_DEBUG_STREAM(nh_->get_logger(), "Created local description: " << message.sdp);
+    RCLCPP_INFO_STREAM(nh_->get_logger(), "Created local description: " << message.sdp);
 
     auto msg = std_msgs::msg::String();
     msg.data = message.toJson();
@@ -478,7 +466,7 @@ void WebrtcClient::OnIceCandidate(const webrtc::IceCandidateInterface* candidate
   IceCandidateMessage message;
   if (message.fromIceCandidate(*candidate))
   {
-    RCLCPP_DEBUG_STREAM(nh_->get_logger(), "Got local ICE candidate: " << message.toJson());
+    RCLCPP_INFO_STREAM(nh_->get_logger(), "Got local ICE candidate: " << message.toJson());
     auto msg = std_msgs::msg::String();
     msg.data = message.toJson();
     rtc_signal_pub_->publish(msg);

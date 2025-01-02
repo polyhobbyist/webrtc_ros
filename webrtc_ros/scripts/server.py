@@ -78,12 +78,18 @@ class WebRTCServer(Node):
         await websocket.accept()
         while True:
             data = await websocket.receive_text()
-            self.get_logger().info(f"Message text was: {data}")
-            msg = WebRTCMessage()
-            msg.id = "myId"
-            msg.type = 0
-            msg.raw_message = data
-            self.sig_pub.publish(msg)
+            if (data == "pong"):
+                msg = WebRTCMessage()
+                msg.id = "myId"
+                msg.type = 1
+                self.sig_pub.publish(msg)
+            else:
+                self.get_logger().info(f"Message text was: {data}")
+                msg = WebRTCMessage()
+                msg.id = "myId"
+                msg.type = 0
+                msg.raw_message = data
+                self.sig_pub.publish(msg)
             
 
     async def websocket_response(self, msg):

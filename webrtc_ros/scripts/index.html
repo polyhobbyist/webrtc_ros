@@ -21,10 +21,15 @@
     var ws = new WebSocket("ws://localhost:8000/ws");
     ws.onmessage = async function(event) {
       var self = this;
+      if (event.data === "ping") {
+        ws.send("pong");
+        return;
+      }
+
       var dataJson = JSON.parse(event.data);
       if (dataJson.type === "offer") {
         console.log("Received WebRTC offer via WebRTC signaling channel");
-        this.peerConnection.setRemoteDescription(new RTCSessionDescription(dataJson),
+        pc.setRemoteDescription(new RTCSessionDescription(dataJson),
           function() {
             var self = this;
             var mediaConstraints = {"optional": [
@@ -33,15 +38,13 @@
 
             pc.createAnswer(
               function(sessionDescription) {
-                self.peerConnection.setLocalDescription(sessionDescription);
+                pc.setLocalDescription(sessionDescription);
                 var data = JSON.stringify(sessionDescription);
                 ws.send(data);
               }, function(error) {
                 console.warn("Create answer error:", error);
               }, mediaConstraints
             );
-            
-            ws.send(JSON.stringify(msg));
           },
           function(event) {
             console.error("onRemoteSdpError", event);
@@ -51,7 +54,7 @@
       else if(dataJson.type === "ice_candidate") {
         console.log("Received WebRTC ice_candidate via WebRTC signaling channel");
         var candidate = new RTCIceCandidate({sdpMLineIndex: dataJson.sdp_mline_index, candidate: dataJson.candidate});
-        this.peerConnection.addIceCandidate(candidate);
+        pc.addIceCandidate(candidate);
       }
       else
       {
@@ -64,6 +67,11 @@
     const hangupButton = document.getElementById('hangupButton');
     const localVideo = document.getElementById('localVideo');
     const remoteVideo = document.getElementById('remoteVideo');
+
+    pc.ontrack = event => {
+      remoteVideo.srcObject = event.streams[0];
+    };
+    
 
     startButton.onclick = async () => {
       callButton.disabled = false;
@@ -83,9 +91,15 @@
       }
 
     actions.push({
+        type: "add_stream",
+        id: "1",
+        stream_id: "1"
+      });
+
+    actions.push({
           type: "add_video_track",
           id: "/subscribed_video",
-          src: "ros_image:/camera/image_raw",
+          src: "ros_image:/camera/image",
           stream_id: "1"
         });
 
