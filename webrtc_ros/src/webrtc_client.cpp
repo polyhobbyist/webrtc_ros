@@ -4,7 +4,15 @@
 #include <webrtc_ros/sdp_message.h>
 #include <webrtc_ros/ice_candidate_message.h>
 //#include "talk/media/devices/devicemanager.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wchanges-meaning"
 #include <webrtc/api/video/video_source_interface.h>
+#include <webrtc/api/peer_connection_interface.h>
+#include <webrtc/api/video_codecs/builtin_video_encoder_factory.h>
+#include <webrtc/api/video_codecs/builtin_video_decoder_factory.h>
+#pragma GCC diagnostic pop
+
 #include <webrtc_ros/ros_video_capturer.h>
 #include <webrtc_ros_msgs/srv/get_ice_servers.hpp>
 
@@ -104,12 +112,8 @@ bool WebrtcClient::start(std::shared_ptr<WebrtcClient>& keep_alive_ptr)
         worker_thread_.get(), worker_thread_.get(), worker_thread_.get(),
         nullptr, webrtc::CreateBuiltinAudioEncoderFactory(),
         webrtc::CreateBuiltinAudioDecoderFactory(),
-        std::unique_ptr<webrtc::VideoEncoderFactory>(
-            new webrtc::MultiplexEncoderFactory(
-                std::make_unique<webrtc::InternalEncoderFactory>())),
-        std::unique_ptr<webrtc::VideoDecoderFactory>(
-            new webrtc::MultiplexDecoderFactory(
-                std::make_unique<webrtc::InternalDecoderFactory>())),
+        webrtc::CreateBuiltinVideoEncoderFactory(),
+        webrtc::CreateBuiltinVideoDecoderFactory(),
         nullptr, nullptr);
 
   if (!peer_connection_factory_.get())
@@ -165,12 +169,18 @@ bool WebrtcClient::initPeerConnection()
 
     WebrtcClientWeakPtr weak_this(keep_alive_this_);
     webrtc_observer_proxy_ = new rtc::RefCountedObject<WebrtcClientObserverProxy>(weak_this);
-    peer_connection_ = peer_connection_factory_->CreatePeerConnection(
+    
+    webrtc::PeerConnectionDependencies pc_dependencies(webrtc_observer_proxy_.get());
+    auto pc_or_error = peer_connection_factory_->CreatePeerConnectionOrError(
             config,
-            nullptr,
-            nullptr,
-            webrtc_observer_proxy_.get()
+            std::move(pc_dependencies)
     );
+    if (!pc_or_error.ok())
+    {
+      RCLCPP_ERROR(rclcpp::get_logger("webrtc_client"), "Failed to create peer connection: %s", pc_or_error.error().message());
+      return false;
+    }
+    peer_connection_ = pc_or_error.value();
     if (!peer_connection_.get())
     {
       RCLCPP_WARN(nh_->get_logger(), "Could not create peer connection");

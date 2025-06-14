@@ -25,8 +25,9 @@ with open(os.path.join(args.build_dir, "obj", "webrtc.ninja"), "r") as f:
             vars[mo.group(1)] = mo.group(2).strip()
 
 webrtc_defs = [d for d in vars["defines"].split(' ') if d.startswith("-D")]
-webrtc_libs = ["webrtc"]
+webrtc_libs = []
 
+# Copy all libraries from build/obj to output directory first
 for root, dirs, files in os.walk(os.path.join(args.build_dir, "obj")):
     libs = [f for f in files if f.startswith("lib") and f.endswith(".a")]
     for l in libs:
@@ -35,17 +36,28 @@ for root, dirs, files in os.walk(os.path.join(args.build_dir, "obj")):
             name = "webrtc_" + name
         source_path = os.path.join(root, l)
         dest_path = os.path.join(args.output_dir, "lib" + name + ".a")
+        print(f"Copying {source_path} -> {dest_path}")
         shutil.copy2(source_path, dest_path)
-        if name not in webrtc_libs:
-            webrtc_libs.append(name)
 
+# Copy third party libraries
 for root, dirs, files in os.walk(os.path.join(args.build_dir, "obj", "third_party")):
     libs = [f for f in files if f.startswith("lib") and f.endswith(".a")]
     for l in libs:
         name = "webrtc_ext_" + l[3:-2]
-        shutil.copy2(os.path.join(root, l), os.path.join(args.output_dir, "lib" + name + ".a"))
+        source_path = os.path.join(root, l)
+        dest_path = os.path.join(args.output_dir, "lib" + name + ".a")
+        print(f"Copying third-party {source_path} -> {dest_path}")
+        shutil.copy2(source_path, dest_path)
+
+# Now enumerate all .a files in the output directory to build the final library list
+for f in os.listdir(args.output_dir):
+    if f.startswith("lib") and f.endswith(".a"):
+        name = f[3:-2]  # Remove "lib" prefix and ".a" suffix
         if name not in webrtc_libs:
             webrtc_libs.append(name)
+            print(f"Added library: {name}")
+
+print(f"Final webrtc_libs: {webrtc_libs}")
 
 if "-DHAVE_PTHREAD" in webrtc_defs:
     webrtc_libs.append("pthread")

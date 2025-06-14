@@ -5,6 +5,9 @@
 #include <image_transport/image_transport.hpp>
 
 #include <webrtc_ros/ros_video_renderer.h>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wchanges-meaning"
 #include <webrtc/api/media_stream_interface.h>
 #include <webrtc/api/peer_connection_interface.h>
 #include <webrtc/api/audio_options.h>
@@ -12,14 +15,12 @@
 #include <webrtc/api/create_peerconnection_factory.h>
 #include <webrtc/api/audio_codecs/builtin_audio_encoder_factory.h>
 #include <webrtc/api/audio_codecs/builtin_audio_decoder_factory.h>
-
-#include <webrtc/media/engine/internal_decoder_factory.h>
-#include <webrtc/media/engine/internal_encoder_factory.h>
-
-
+#include <webrtc/api/video_codecs/builtin_video_encoder_factory.h>
+#include <webrtc/api/video_codecs/builtin_video_decoder_factory.h>
 #include <webrtc/media/base/adapted_video_track_source.h>
+#include <webrtc/rtc_base/thread.h>
+#pragma GCC diagnostic pop
 
-#include <webrtc/media/engine/multiplex_codec_factory.h>
 #include <webrtc_ros/configure_message.h>
 #include <webrtc_ros/image_transport_factory.h>
 #include <webrtc/rtc_base/thread.h>
