@@ -1,7 +1,7 @@
 #include "webrtc_ros/ros_video_capturer.h"
 
 #include <rclcpp/rclcpp.hpp>
-#include <cv_bridge/cv_bridge.h>
+#include <cv_bridge/cv_bridge.hpp>
 #include <boost/enable_shared_from_this.hpp>
 
 namespace webrtc_ros
@@ -97,7 +97,7 @@ bool RosVideoCapturer::is_screencast() const
 }
 
  
-absl::optional<bool> RosVideoCapturer::needs_denoising() const
+std::optional<bool> RosVideoCapturer::needs_denoising() const
 {
 	return false;
 }

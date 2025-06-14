@@ -1,8 +1,9 @@
 #!/bin/bash
 set -e
-run_updates=0
+run_updates=1
 rootdir="$(cd "$(dirname "$0")"; pwd)"
-revision="src@93081d594f7efff72958a79251f53731b99e902b" # Chromium M108
+# check https://chromiumdash.appspot.com/branches
+revision="src@branch-heads/7151" # Chromium M137
 export PATH="$rootdir/depot_tools:$PATH"
 if [ ! -d "$rootdir/webrtc" ]
 then

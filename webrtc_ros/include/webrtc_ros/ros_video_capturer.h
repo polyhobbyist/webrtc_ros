@@ -10,6 +10,7 @@
 #include <webrtc/rtc_base/thread.h>
 #include <webrtc_ros/image_transport_factory.h>
 #include <mutex>
+#include <optional>
 #include <boost/enable_shared_from_this.hpp>
 
 
@@ -31,7 +32,7 @@ public:
   void Stop();
 
   bool is_screencast() const override;
-  absl::optional<bool> needs_denoising() const override;
+  std::optional<bool> needs_denoising() const override;
   void SetState(webrtc::MediaSourceInterface::SourceState state);
 	webrtc::MediaSourceInterface::SourceState state() const override;
 	bool remote() const override;

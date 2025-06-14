@@ -1,10 +1,20 @@
 # WebRTC ROS 2 Node
 This is a ROS 2 package that provides a WebRTC peer that can be configured to stream a ROS image topic and recieve a stream that is published to a ROS image topic.
 
+## Version Information
+This package uses WebRTC from Chromium 137 stable release.
+
 ## Installation
 
 ```bash
-sudo apt-get install libgtk-3-dev pulseaudio
+sudo apt-get install libgtk-3-dev pulseaudio ninja-build
+```
+
+### Updating WebRTC Version
+To update the WebRTC source to Chromium 137 stable release, run:
+
+```bash
+./update_to_chromium_137.sh
 ```
 
 ## Testing

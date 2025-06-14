@@ -25,6 +25,10 @@ case "$a" in
 		echo>&2 "WARNING: Unknown target platform: $a, continuing anyway"
 	;;
 esac
+cd "$rootdir/webrtc"
+echo "Syncing WebRTC dependencies to ensure correct toolchain versions"
+gclient sync
 cd "$rootdir/webrtc/src"
-gn gen "$1" --args="is_debug=false is_clang=false is_desktop_linux=true use_system_libjpeg=true treat_warnings_as_errors=false fatal_linker_warnings=false use_gio=false use_rtti=true rtc_enable_protobuf=false rtc_include_tests=true use_sysroot=false use_custom_libcxx=false rtc_build_json=true symbol_level=0 target_os=\"linux\" host_cpu=\"$a\" current_cpu=\"$a\" target_cpu=\"$a\"$extras"
+echo "Preparing WebRTC build for $1 on $a in $rootdir/webrtc/src"
+gn gen "$1" --args="is_debug=false is_clang=true is_desktop_linux=true use_system_libjpeg=true treat_warnings_as_errors=false fatal_linker_warnings=false use_gio=false use_rtti=true rtc_enable_protobuf=false rtc_include_tests=true use_sysroot=false use_custom_libcxx=false rtc_build_json=true symbol_level=0 target_os=\"linux\" host_cpu=\"$a\" current_cpu=\"$a\" target_cpu=\"$a\" extra_cxxflags=[\"-Wno-overloaded-virtual\"]$extras"
 

@@ -20,7 +20,7 @@ except OSError:
 vars = {}
 with open(os.path.join(args.build_dir, "obj", "webrtc.ninja"), "r") as f:
     for line in iter(f):
-        mo = re.match("(\w+) = (.*)\n", line)
+        mo = re.match(r"(\w+) = (.*)\n", line)
         if mo:
             vars[mo.group(1)] = mo.group(2).strip()
 
@@ -33,7 +33,9 @@ for root, dirs, files in os.walk(os.path.join(args.build_dir, "obj")):
         name = l[3:-2]
         if not name.startswith("webrtc"):
             name = "webrtc_" + name
-        shutil.copy2(os.path.join(args.build_dir, "obj", "webrtc", root, l), os.path.join(args.output_dir, "lib" + name + ".a"))
+        source_path = os.path.join(root, l)
+        dest_path = os.path.join(args.output_dir, "lib" + name + ".a")
+        shutil.copy2(source_path, dest_path)
         if name not in webrtc_libs:
             webrtc_libs.append(name)
 
@@ -41,7 +43,7 @@ for root, dirs, files in os.walk(os.path.join(args.build_dir, "obj", "third_part
     libs = [f for f in files if f.startswith("lib") and f.endswith(".a")]
     for l in libs:
         name = "webrtc_ext_" + l[3:-2]
-        shutil.copy2(os.path.join(args.build_dir, "obj", "webrtc", root, l), os.path.join(args.output_dir, "lib" + name + ".a"))
+        shutil.copy2(os.path.join(root, l), os.path.join(args.output_dir, "lib" + name + ".a"))
         if name not in webrtc_libs:
             webrtc_libs.append(name)
 

@@ -46,25 +46,22 @@ target_include_directories(${PROJECT_NAME}_server_node
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
+message(STATUS "*****webrtc_LIBRARIES: ${webrtc_LIBRARIES}")
 
-ament_target_dependencies(
-  ${PROJECT_NAME}_server_node
-    cv_bridge
-    image_transport
-    rclcpp
-    std_msgs
-    webrtc_ros_msgs
-    
-)
-
-target_link_libraries(${PROJECT_NAME}_server_node 
+target_link_libraries(${PROJECT_NAME}_server_node PUBLIC
+  ${std_msgs_TARGETS}
+  ${webrtc_ros_msgs_TARGETS}
+  cv_bridge::cv_bridge
+  image_transport::image_transport
+  rclcpp::rclcpp
   ${webrtc_LIBRARIES}
-  webrtc
   jsoncpp_lib
   ${X11_LIBRARIES}
 )
 
-set_target_properties(${PROJECT_NAME}_server_node PROPERTIES COMPILE_OPTIONS "-std=c++17")
+target_compile_options(${PROJECT_NAME}_server_node PRIVATE 
+  -std=c++17
+)
 
 #############
 ## Install ##
