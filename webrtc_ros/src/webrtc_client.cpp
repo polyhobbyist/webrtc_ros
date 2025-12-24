@@ -17,6 +17,7 @@
 #include <webrtc_ros_msgs/srv/get_ice_servers.hpp>
 
 #include <chrono>
+#include <memory>
 using namespace std::chrono_literals;
 
 namespace webrtc_ros
@@ -108,13 +109,14 @@ bool WebrtcClient::start(std::shared_ptr<WebrtcClient>& keep_alive_ptr)
 
   it_ = std::make_shared<image_transport::ImageTransport>(nh_);
   
-  peer_connection_factory_  = webrtc::CreatePeerConnectionFactory(
-        worker_thread_.get(), worker_thread_.get(), worker_thread_.get(),
-        nullptr, webrtc::CreateBuiltinAudioEncoderFactory(),
-        webrtc::CreateBuiltinAudioDecoderFactory(),
-        webrtc::CreateBuiltinVideoEncoderFactory(),
-        webrtc::CreateBuiltinVideoDecoderFactory(),
-        nullptr, nullptr);
+    peer_connection_factory_  = webrtc::CreatePeerConnectionFactory(
+      worker_thread_.get(), worker_thread_.get(), worker_thread_.get(),
+      nullptr,
+      webrtc::CreateBuiltinAudioEncoderFactory(),
+      webrtc::CreateBuiltinAudioDecoderFactory(),
+      webrtc::CreateBuiltinVideoEncoderFactory(),
+      webrtc::CreateBuiltinVideoDecoderFactory(),
+      nullptr, nullptr);
 
   if (!peer_connection_factory_.get())
   {

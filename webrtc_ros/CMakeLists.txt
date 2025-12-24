@@ -63,6 +63,11 @@ target_compile_options(${PROJECT_NAME}_server_node PRIVATE
   -std=c++17
 )
 
+# Suppress linker warnings about .eh_frame from WebRTC libraries
+target_link_options(${PROJECT_NAME}_server_node PRIVATE
+  "LINKER:--warn-unresolved-symbols" "LINKER:--noinhibit-exec"
+)
+
 #############
 ## Install ##
 #############

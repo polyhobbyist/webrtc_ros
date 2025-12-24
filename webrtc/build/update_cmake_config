@@ -2,6 +2,8 @@
 import argparse
 import os
 import shutil
+import subprocess
+import tempfile
 import re
 from itertools import chain
 
@@ -27,6 +29,39 @@ with open(os.path.join(args.build_dir, "obj", "webrtc.ninja"), "r") as f:
 webrtc_defs = [d for d in vars["defines"].split(' ') if d.startswith("-D")]
 webrtc_libs = []
 
+def copy_archive(source_path, dest_path):
+    """Copy an archive to dest_path, expanding thin archives to full ones."""
+    try:
+        with open(source_path, "rb") as f:
+            magic = f.read(7)
+    except OSError as exc:
+        raise RuntimeError(f"Failed to open archive {source_path}: {exc}")
+
+    is_thin = magic == b"!<thin>"
+    if is_thin:
+        print(f"Expanding thin archive {source_path} -> {dest_path}")
+        members = subprocess.check_output(["ar", "t", source_path], text=True).split()
+        tmpdir = tempfile.mkdtemp(prefix="webrtc_ar_")
+        try:
+            extracted = []
+            for m in members:
+                obj_source = os.path.join(os.path.dirname(source_path), m)
+                if not os.path.isfile(obj_source):
+                    raise FileNotFoundError(f"Missing member {obj_source} for thin archive {source_path}")
+                obj_dest = os.path.join(tmpdir, os.path.basename(m))
+                shutil.copy2(obj_source, obj_dest)
+                extracted.append(obj_dest)
+            result = subprocess.run(["ar", "rcs", dest_path] + extracted, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise RuntimeError(f"ar failed for {dest_path}: {result.stderr}")
+            print(f"Successfully expanded {dest_path}")
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+    else:
+        print(f"Copying {source_path} -> {dest_path}")
+        shutil.copy2(source_path, dest_path)
+
+
 # Copy all libraries from build/obj to output directory first
 for root, dirs, files in os.walk(os.path.join(args.build_dir, "obj")):
     libs = [f for f in files if f.startswith("lib") and f.endswith(".a")]
@@ -36,8 +71,7 @@ for root, dirs, files in os.walk(os.path.join(args.build_dir, "obj")):
             name = "webrtc_" + name
         source_path = os.path.join(root, l)
         dest_path = os.path.join(args.output_dir, "lib" + name + ".a")
-        print(f"Copying {source_path} -> {dest_path}")
-        shutil.copy2(source_path, dest_path)
+        copy_archive(source_path, dest_path)
 
 # Copy third party libraries
 for root, dirs, files in os.walk(os.path.join(args.build_dir, "obj", "third_party")):
@@ -47,7 +81,7 @@ for root, dirs, files in os.walk(os.path.join(args.build_dir, "obj", "third_part
         source_path = os.path.join(root, l)
         dest_path = os.path.join(args.output_dir, "lib" + name + ".a")
         print(f"Copying third-party {source_path} -> {dest_path}")
-        shutil.copy2(source_path, dest_path)
+        copy_archive(source_path, dest_path)
 
 # Now enumerate all .a files in the output directory to build the final library list
 for f in os.listdir(args.output_dir):
